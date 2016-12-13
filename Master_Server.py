@@ -106,13 +106,6 @@ class downloader(threading.Thread):
         logging.info("Start downloader server")
         server.serve_forever()       
 
-class heartbeat_server(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-
-    def run(self):
-        
-
 def start_server(server_name,server_port):
     uploader_thread = uploader(server_name)
     uploader_thread.start()
