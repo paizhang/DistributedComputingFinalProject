@@ -110,6 +110,7 @@ class downloader(threading.Thread):  #Download the encoded video from the encode
         logging.info("Start downloader server")
         server.serve_forever()       
 
+<<<<<<< HEAD
 class heartbeat_server(threading.Thread):  #Using heartbeat to contact with all encoders to detect the encoder failure
     def __init__(self):
         threading.Thread.__init__(self)
@@ -133,6 +134,8 @@ class heartbeat_server(threading.Thread):  #Using heartbeat to contact with all 
                     
             time.sleep(2)
 
+=======
+>>>>>>> 0245514c72ef03e5b5465f5e2381d56b7a444bbc
 def start_server(server_name,server_port):
     uploader_thread = uploader(server_name)
     uploader_thread.start()
