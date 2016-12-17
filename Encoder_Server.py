@@ -11,7 +11,7 @@ import time
 import socket
 import subprocess
 
-def log_setting():
+def log_setting():  #Configure the log setting
     logging.basicConfig(level=logging.DEBUG,format='%(asctime)s.%(msecs)03d %(filename)s %(levelname)s: %(message)s',datefmt="%Y-%m-%d %H:%M:%S",filename='Master_Server.log',filemode='a')
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -19,7 +19,7 @@ def log_setting():
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
 
-class download_encoded_file(threading.Thread):
+class download_encoded_file(threading.Thread):  #Send the encoded video back to the master server
     def __init__(self,server_ip):
         threading.Thread.__init__(self)
         self.ip = server_ip
@@ -36,30 +36,47 @@ class download_encoded_file(threading.Thread):
         logging.info("Start downloading server")
         server.serve_forever()
 
+class heartbeat_server(threading.Thread):  #Receive the heartbeat from the master server
+    def __init__(self, server_ip):
+        threading.Thread.__init__(self)
+        self.ip = server_ip
+
+    def heartbeat_responce(self, heartbeat_info):
+        #print "Receive heartbeat:" + heartbeat_info
+        return "This is the responce from " + self.ip
+
+    def run(self):
+        server = SimpleXMLRPCServer((self.ip, 10066), logRequests=True)
+        server.register_function(self.heartbeat_responce)
+        logging.info("Start heartbeat server")
+        server.serve_forever()
+
 def start_server(server_name, server_port):
     downloader_thread = download_encoded_file(server_name)
     downloader_thread.start()
+    heartbeat_thread = heartbeat_server(server_name)
+    heartbeat_thread.start()
     uploader_proxy = xmlrpclib.ServerProxy("http://172.22.71.28:10060")
     downloader_proxy = xmlrpclib.ServerProxy("http://172.22.71.28:10090")
     while True:    
-        request_res =  uploader_proxy.check_task_available()
+        request_res =  uploader_proxy.check_task_available(server_name)
         if request_res != "null":
-            print "Got one task: " + request_res
+            logging.info("Got one task: " + request_res)
             pre_file_name = request_res.split('.')[0]
-            print "Open file to write"
+            logging.info("Open file to write")
             with open(request_res,"wb") as handle:
                 handle.write(uploader_proxy.upload_file(request_res).data)    
-            print "Received file"
-            print "Start encoding" 
+            logging.info("Received file")
+            logging.info("Start encoding") 
             p = subprocess.Popen('./ffmpeg -i ' + request_res + ' ' + pre_file_name + '.avi',stdin=subprocess.PIPE, stdout=subprocess.PIPE,shell=True)
             output = p.stdout.read()
             print output
             p = subprocess.Popen('rm ' + pre_file_name + '.mp4',stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True)
-            print "Start sending the file to the master server..."
-            print "Master server returns " + downloader_proxy.download_file(server_name,pre_file_name + '.avi')
+            logging.info("Start sending the file to the master server...")
+            logging.info("Master server returns " + downloader_proxy.download_file(server_name,pre_file_name + '.avi'))
             p = subprocess.Popen('rm ' + pre_file_name + '.avi',stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=True)
         else:
-            print "No task now"
+            logging.info("No task now")
         time.sleep(2)
         
 
